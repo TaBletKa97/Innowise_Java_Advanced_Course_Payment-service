@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: Innowise_Java_Advanced_Course_Payment-service
+
+  mongodb:
+    host: localhost
+    port: 27017
+    username: ${SPRING_MONGO_USER:mongo}
+    password: ${SPRING_MONGO_PASSWORD:mongo}
+    database: ${SPRING_MONGO_DATABASE:payment_service}
+    authentication-database: admin
+
+  data:
+    mongodb:
+      auto-index-creation: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVER:localhost:9092}
+
+server:
+  port: 8083
+
+
+random-service:
+  uri: https://www.random.org/integers/?num=1&min=1&max=6&col=1&base=10&format=plain&rnd=new
+
+logging:
+  level:
+    com.innowise: DEBUG
