@@ -9,5 +9,5 @@ import org.springframework.web.service.annotation.HttpExchange;
 public interface RandomHttpClient {
 
     @GetExchange
-    Integer getRandom();
+    String getRandom();
 }

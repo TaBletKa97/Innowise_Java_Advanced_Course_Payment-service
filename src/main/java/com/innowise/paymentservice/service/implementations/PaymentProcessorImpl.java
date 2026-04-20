@@ -26,7 +26,7 @@ public class PaymentProcessorImpl implements PaymentProcessor {
         log.debug("Processing payment with id: {}", payment.getId());
 
         try {
-            digit = random.getRandom();
+            digit = Integer.parseInt(random.getRandom().strip());
         } catch (Exception e) {
             throw new PaymentProcessException(payment.getId(), e);
         }
