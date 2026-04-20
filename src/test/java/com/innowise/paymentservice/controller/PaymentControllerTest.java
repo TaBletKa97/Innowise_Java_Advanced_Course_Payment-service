@@ -43,8 +43,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-@WithMockUser(username = "1", authorities = "ADMIN")
 class PaymentControllerTest {
+
+    private static final String headerUserId = "user_id";
+    private static final String headerRole = "role";
+    private static final String headerValueUser = "USER";
 
     @Autowired
     private MockMvc mockMvc;
@@ -138,6 +141,7 @@ class PaymentControllerTest {
 
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void createPayment_ShouldCreatePayment() throws Exception {
         // Arrange
         Long orderId = 100L;
@@ -159,6 +163,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void createPayment_ShouldReturnBadRequest() throws Exception {
         // Arrange
         Long orderId = -100L;
@@ -174,6 +179,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getPaymentsByOrderId_ShouldReturnPayment() throws Exception {
         // Arrange
         var id = 1L;
@@ -190,6 +196,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getPaymentsByOrderId_ShouldReturn404() throws Exception {
         // Arrange
         var id = 600L;
@@ -200,6 +207,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getPaymentsByStatus_ShouldReturnListOfPayments() throws Exception {
 
         // Arrange & Act & Assert
@@ -213,6 +221,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getPaymentsByUserId_ShouldReturnListOfPayments() throws Exception {
         // Arrange
         long userId1 = 1L;
@@ -234,6 +243,7 @@ class PaymentControllerTest {
     }
 
     @ParameterizedTest
+    @WithMockUser(username = "1", authorities = "ADMIN")
     @CsvSource({
             "2, SUCCESS",
             "1, FAILED"
@@ -258,6 +268,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void processPaymentsById_ShouldReturn404() throws Exception {
         // Arrange
         String id = "something";
@@ -268,6 +279,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void processPaymentsById_ShouldReturnBadRequest() throws Exception {
         // Arrange
         String id = "69e3aacf8951b6a63b24edab";
@@ -278,6 +290,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getTotalByUserId_ShouldReturnAmount() throws Exception {
         // Arrange
         String startDate = LocalDate.now().minusDays(2).toString();
@@ -296,6 +309,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getTotalByUserId_ShouldReturnZero() throws Exception {
         // Arrange
         String weekAgo = LocalDate.now().minusWeeks(1).toString();
@@ -308,6 +322,7 @@ class PaymentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getTotal_ShouldReturnAmount() throws Exception {
         // Arrange
         String weeksAgo = LocalDate.now().minusWeeks(2).toString();
@@ -326,7 +341,8 @@ class PaymentControllerTest {
     }
 
     @Test
-    void getTotalShouldReturnZero() throws Exception {
+    @WithMockUser(username = "1", authorities = "ADMIN")
+    void getTotal_ShouldReturnZero() throws Exception {
         // Arrange
         String weeksAgo = LocalDate.now().minusWeeks(2).toString();
 
@@ -336,5 +352,127 @@ class PaymentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(BigDecimal.valueOf(0)));
 
+    }
+
+    @Test
+    void getTotal_ShouldReturnForbidden() throws Exception {
+        // Arrange
+        String weeksAgo = LocalDate.now().minusWeeks(2).toString();
+
+        // Act & Assert
+        mockMvc.perform(get("/payments/total?startDate="
+                        + weeksAgo + "&endDate=" + weeksAgo)
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getTotalByUserId_ShouldReturnForbiddenForWrongUser() throws Exception {
+        // Arrange
+        String weeksAgo = LocalDate.now().minusWeeks(2).toString();
+
+        // Act & Assert
+        mockMvc.perform(get("/users/2/payments/total?startDate="
+                        + weeksAgo + "&endDate=" + weeksAgo)
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getTotalByUserId_ShouldReturnOkForValidUser() throws Exception {
+        // Arrange
+        String weeksAgo = LocalDate.now().minusWeeks(2).toString();
+
+        // Act & Assert
+        mockMvc.perform(get("/users/2/payments/total?startDate="
+                        + weeksAgo + "&endDate=" + weeksAgo)
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void processPaymentsById_ShouldReturnOkForValidUser() throws Exception {
+        // Arrange
+        Optional<Payment> byOrderId = paymentRepository.getByOrderId(3L);
+        String id = byOrderId.get().getId();
+
+        // Act & Assert
+        mockMvc.perform(patch("/payments/" + id)
+                        .header(headerUserId, 2)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void processPaymentsById_ShouldReturnForbiddenForWrongUser() throws Exception {
+        // Arrange
+        Optional<Payment> byOrderId = paymentRepository.getByOrderId(3L);
+        String id = byOrderId.get().getId();
+
+        // Act & Assert
+        mockMvc.perform(patch("/payments/" + id)
+                        .header(headerUserId, 500)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getPaymentsByOrderId_ShouldReturnOkForValidUser() throws Exception {
+        // Arrange
+        var id = 1L;
+
+        // Act and Assert
+        mockMvc.perform(get("/orders/" + id + "/payment")
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getPaymentsByOrderId_ShouldReturnForbiddenForWrongUser() throws Exception {
+        // Arrange
+        var id = 1L;
+
+        // Act and Assert
+        mockMvc.perform(get("/orders/" + id + "/payment")
+                        .header(headerUserId, 500)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getPaymentsByUserId_ShouldReturnOkForValidUser() throws Exception {
+        // Arrange
+        long userId1 = 1L;
+
+        // Act & Assert
+        mockMvc.perform(get("/users/" + userId1 + "/payments")
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getPaymentsByUserId_ShouldReturnForbiddenForWrongUser() throws Exception {
+        // Arrange
+        long userId1 = 1L;
+
+        // Act & Assert
+        mockMvc.perform(get("/users/" + userId1 + "/payments")
+                        .header(headerUserId, 2)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getPaymentsByStatus_ShouldReturnForbiddenForNonAdmin() throws Exception {
+        // Arrange & Act & Assert
+        mockMvc.perform(get("/payments?status=SUCCESS")
+                        .header(headerUserId, 1)
+                        .header(headerRole, headerValueUser))
+                .andExpect(status().isForbidden());
     }
 }
