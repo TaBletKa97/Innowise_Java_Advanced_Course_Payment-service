@@ -28,7 +28,7 @@ class PaymentProcessorImplTest {
             "2, SUCCESS",
             "1, FAILED"
     })
-    void process_shouldWorkCorrectly(int random, String status) {
+    void process_shouldWorkCorrectly(String random, String status) {
         // Arrange
         Payment payment = new Payment();
 

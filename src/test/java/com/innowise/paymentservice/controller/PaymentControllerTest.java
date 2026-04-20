@@ -249,7 +249,7 @@ class PaymentControllerTest {
             "1, FAILED"
     })
     void processPaymentsById_ShouldProcessPayment_Success(
-            int random, String status
+            String random, String status
     ) throws Exception {
         // Arrange
         Optional<Payment> byOrderId = paymentRepository.getByOrderId(3L);
@@ -399,6 +399,7 @@ class PaymentControllerTest {
         Optional<Payment> byOrderId = paymentRepository.getByOrderId(3L);
         String id = byOrderId.get().getId();
 
+        when(client.getRandom()).thenReturn("1");
         // Act & Assert
         mockMvc.perform(patch("/payments/" + id)
                         .header(headerUserId, 2)
