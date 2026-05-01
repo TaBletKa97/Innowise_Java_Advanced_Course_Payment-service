@@ -3,8 +3,8 @@ spring:
     name: Innowise_Java_Advanced_Course_Payment-service
 
   mongodb:
-    host: localhost
-    port: 27017
+    host: ${SPRING_MONGO_HOST:localhost}
+    port: ${SPRING_MONGO_PORT:27017}
     username: ${SPRING_MONGO_USER:mongo}
     password: ${SPRING_MONGO_PASSWORD:mongo}
     database: ${SPRING_MONGO_DATABASE:payment_service}
