@@ -40,7 +40,7 @@ public class SecurityConfig {
                                         })
                 )
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health/liveness").permitAll()
+                        .requestMatchers("/actuator/health/*").permitAll()
                         .anyRequest().authenticated()
                 )
                 .build();
