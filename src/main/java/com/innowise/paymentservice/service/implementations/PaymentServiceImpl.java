@@ -2,8 +2,9 @@ package com.innowise.paymentservice.service.implementations;
 
 import com.innowise.paymentservice.exceptions.NoPaymentRelatedToSuchOrderException;
 import com.innowise.paymentservice.exceptions.PaymentAlreadyProcessedException;
-import com.innowise.paymentservice.messagebrokers.MessageBroker;
+import com.innowise.paymentservice.repository.CreatePaymentEventRepository;
 import com.innowise.paymentservice.repository.PaymentRepository;
+import com.innowise.paymentservice.repository.entity.CreatePaymentEvent;
 import com.innowise.paymentservice.repository.entity.Payment;
 import com.innowise.paymentservice.repository.entity.PaymentStatus;
 import com.innowise.paymentservice.service.dto.PaymentCreateRequestDto;
@@ -29,7 +30,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper mapper;
     private final PaymentRepository repository;
     private final PaymentProcessor processor;
-    private final MessageBroker kafka;
+    private final CreatePaymentEventRepository eventRepository;
 
 
     @Override
@@ -74,7 +75,8 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentResponseDto paymentDto =
                 mapper.entityToDto(repository.save(payment));
 
-        kafka.sendMessage(paymentDto);
+        var event = new CreatePaymentEvent(paymentDto.id(), paymentDto.timestamp());
+        eventRepository.save(event);
 
         return paymentDto;
     }

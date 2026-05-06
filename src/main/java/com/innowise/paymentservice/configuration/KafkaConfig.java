@@ -23,6 +23,7 @@ public class KafkaConfig {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 server);
+        config.put(ProducerConfig.ACKS_CONFIG, "all");
 
         var serializer = new JacksonJsonSerializer<>();
         serializer.setAddTypeInfo(false);
