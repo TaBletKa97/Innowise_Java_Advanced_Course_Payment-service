@@ -45,9 +45,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 class PaymentControllerTest {
 
-    private static final String headerUserId = "user_id";
-    private static final String headerRole = "role";
-    private static final String headerValueUser = "USER";
+    private static final String HEADER_USER_ID = "user_id";
+    private static final String HEADER_ROLE = "role";
+    private static final String HEADER_VALUE_USER = "USER";
 
     @Autowired
     private MockMvc mockMvc;
@@ -362,12 +362,13 @@ class PaymentControllerTest {
         // Act & Assert
         mockMvc.perform(get("/payments/total?startDate="
                         + weeksAgo + "&endDate=" + weeksAgo)
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 
     @Test
+    @WithMockUser(username = "1", authorities = "ADMIN")
     void getTotalByUserId_ShouldReturnForbiddenForWrongUser() throws Exception {
         // Arrange
         String weeksAgo = LocalDate.now().minusWeeks(2).toString();
@@ -375,9 +376,9 @@ class PaymentControllerTest {
         // Act & Assert
         mockMvc.perform(get("/users/2/payments/total?startDate="
                         + weeksAgo + "&endDate=" + weeksAgo)
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
-                .andExpect(status().isForbidden());
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -388,8 +389,8 @@ class PaymentControllerTest {
         // Act & Assert
         mockMvc.perform(get("/users/2/payments/total?startDate="
                         + weeksAgo + "&endDate=" + weeksAgo)
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 
@@ -402,8 +403,8 @@ class PaymentControllerTest {
         when(client.getRandom()).thenReturn("1");
         // Act & Assert
         mockMvc.perform(patch("/payments/" + id)
-                        .header(headerUserId, 2)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 2)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isOk());
     }
 
@@ -415,8 +416,8 @@ class PaymentControllerTest {
 
         // Act & Assert
         mockMvc.perform(patch("/payments/" + id)
-                        .header(headerUserId, 500)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 500)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 
@@ -427,8 +428,8 @@ class PaymentControllerTest {
 
         // Act and Assert
         mockMvc.perform(get("/orders/" + id + "/payment")
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isOk());
     }
 
@@ -439,8 +440,8 @@ class PaymentControllerTest {
 
         // Act and Assert
         mockMvc.perform(get("/orders/" + id + "/payment")
-                        .header(headerUserId, 500)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 500)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 
@@ -451,8 +452,8 @@ class PaymentControllerTest {
 
         // Act & Assert
         mockMvc.perform(get("/users/" + userId1 + "/payments")
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isOk());
     }
 
@@ -463,8 +464,8 @@ class PaymentControllerTest {
 
         // Act & Assert
         mockMvc.perform(get("/users/" + userId1 + "/payments")
-                        .header(headerUserId, 2)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 2)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 
@@ -472,8 +473,8 @@ class PaymentControllerTest {
     void getPaymentsByStatus_ShouldReturnForbiddenForNonAdmin() throws Exception {
         // Arrange & Act & Assert
         mockMvc.perform(get("/payments?status=SUCCESS")
-                        .header(headerUserId, 1)
-                        .header(headerRole, headerValueUser))
+                        .header(HEADER_USER_ID, 1)
+                        .header(HEADER_ROLE, HEADER_VALUE_USER))
                 .andExpect(status().isForbidden());
     }
 }

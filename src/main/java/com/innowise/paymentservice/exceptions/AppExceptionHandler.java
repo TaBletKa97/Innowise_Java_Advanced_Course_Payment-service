@@ -44,7 +44,7 @@ public class AppExceptionHandler {
     }
 
     @ExceptionHandler(AuthorizationDeniedException.class)
-    public ResponseEntity<String> AuthorizationDeniedExceptionException(Exception e) {
+    public ResponseEntity<String> authorizationDeniedExceptionException(Exception e) {
         log.error(e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
     }

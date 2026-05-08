@@ -15,24 +15,23 @@ public class SecurityServiceImpl {
     private final PaymentRepository repository;
 
     public boolean canAccessPaymentByUserId(Long userId) {
-        Long loggedUserId = (Long) SecurityContextHolder.getContext()
+        Object loggedUserId = SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
         return userId.equals(loggedUserId);
     }
 
     public boolean canAccessPaymentByOrderId(Long orderId) {
-        Long loggedUserId = (Long) SecurityContextHolder.getContext()
+        Object loggedUserId = SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
 
         Optional<Payment> payment = repository.getByOrderId(orderId);
 
         return payment.map(p -> p.getUserId().equals(loggedUserId))
                 .orElse(false);
-
     }
 
     public boolean canAccessPayment(String paymentId) {
-        Long loggedUserId = (Long) SecurityContextHolder.getContext()
+        Object loggedUserId = SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
 
         Optional<Payment> payment = repository.findById(paymentId);
