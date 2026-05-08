@@ -2,7 +2,7 @@ package com.innowise.paymentservice.service.implementations;
 
 import com.innowise.paymentservice.exceptions.NoPaymentRelatedToSuchOrderException;
 import com.innowise.paymentservice.exceptions.PaymentAlreadyProcessedException;
-import com.innowise.paymentservice.messagebrokers.MessageBroker;
+import com.innowise.paymentservice.repository.CreatePaymentEventRepository;
 import com.innowise.paymentservice.repository.PaymentRepository;
 import com.innowise.paymentservice.repository.entity.Payment;
 import com.innowise.paymentservice.repository.entity.PaymentStatus;
@@ -39,10 +39,10 @@ class PaymentServiceImplTest {
     private PaymentProcessor paymentProcessor;
 
     @Mock
-    private MessageBroker messageBroker;
+    private PaymentMapper paymentMapper;
 
     @Mock
-    private PaymentMapper paymentMapper;
+    private CreatePaymentEventRepository eventRepository;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -221,7 +221,7 @@ class PaymentServiceImplTest {
         verify(paymentRepository).findById(paymentId);
         verify(paymentProcessor).process(payment);
         verify(paymentMapper).entityToDto(payment);
-        verify(messageBroker).sendMessage(response);
+        eventRepository.save(any());
     }
 
     @Test

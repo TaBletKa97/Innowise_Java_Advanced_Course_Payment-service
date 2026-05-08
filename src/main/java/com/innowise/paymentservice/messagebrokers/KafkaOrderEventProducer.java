@@ -20,8 +20,13 @@ public class KafkaOrderEventProducer implements MessageBroker {
             kafkaTemplate.send("CREATE_PAYMENT", message).get(5, TimeUnit.SECONDS);
             log.debug("Payment {} was sent to Kafka", message);
             return true;
-        } catch (Exception e) {
+
+        } catch (InterruptedException e) {
             log.info("Failed to send message to Kafka.\n", e);
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to send message to Kafka.\n", e);
             return false;
         }
     }
