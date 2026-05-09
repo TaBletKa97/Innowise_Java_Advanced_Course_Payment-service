@@ -1,11 +1,15 @@
 package com.innowise.paymentservice.controller;
 
 import com.innowise.paymentservice.external.RandomHttpClient;
-import com.innowise.paymentservice.messagebrokers.MessageBroker;
 import com.innowise.paymentservice.repository.PaymentRepository;
 import com.innowise.paymentservice.repository.entity.Payment;
 import com.innowise.paymentservice.repository.entity.PaymentStatus;
 import com.innowise.paymentservice.service.dto.PaymentCreateRequestDto;
+import com.innowise.paymentservice.service.dto.PaymentResponseDto;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,22 +22,30 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import static com.innowise.paymentservice.repository.entity.PaymentStatus.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -41,6 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@DirtiesContext
 @AutoConfigureMockMvc
 @Testcontainers
 class PaymentControllerTest {
@@ -55,10 +68,12 @@ class PaymentControllerTest {
     @MockitoBean
     private RandomHttpClient client;
 
-    @MockitoBean
-    private MessageBroker broker;
-
     private static MongoDBContainer mongo;
+
+    @Container
+    private static final KafkaContainer kafka = new KafkaContainer(
+            DockerImageName.parse("apache/kafka:4.0.2")
+    );
 
     @Autowired
     private ObjectMapper mapper;
@@ -69,6 +84,7 @@ class PaymentControllerTest {
     @DynamicPropertySource
     static void mongoProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.mongodb.uri", mongo::getReplicaSetUrl);
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 
     @BeforeAll
@@ -255,16 +271,57 @@ class PaymentControllerTest {
         Optional<Payment> byOrderId = paymentRepository.getByOrderId(3L);
         String id = byOrderId.get().getId();
 
+
         when(client.getRandom()).thenReturn(random);
         // Act & Assert
-        mockMvc.perform(patch("/payments/" + id))
+        MvcResult mvcResult = mockMvc.perform(patch("/payments/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.orderId").value(3))
                 .andExpect(jsonPath("$.userId").value(2))
                 .andExpect(jsonPath("$.status").value(status))
                 .andExpect(jsonPath("$.timestamp").value(Matchers.notNullValue()))
-                .andExpect(jsonPath("$.paymentAmount").value(BigDecimal.TEN));
+                .andExpect(jsonPath("$.paymentAmount").value(BigDecimal.TEN))
+                .andReturn();
+
+        ConsumerRecords<String, String> records;
+        try (KafkaConsumer<String, String> consumer = getConsumer()) {
+            consumer.subscribe(List.of("CREATE_PAYMENT"));
+            records = consumer.poll(Duration.ofSeconds(5));
+        }
+
+        assertEquals(1, records.count());
+
+        PaymentResponseDto sentResult = mapper.readValue(
+                mvcResult.getResponse().getContentAsString(),
+                PaymentResponseDto.class
+        );
+
+        PaymentResponseDto obtainedResult = mapper.readValue(
+                records.iterator().next().value(),
+                PaymentResponseDto.class
+        );
+
+        assertEquals(sentResult.id(), obtainedResult.id());
+        assertEquals(sentResult.orderId(), obtainedResult.orderId());
+        assertEquals(sentResult.userId(), obtainedResult.userId());
+        assertEquals(sentResult.status(), obtainedResult.status());
+        assertEquals(sentResult.paymentAmount(), obtainedResult.paymentAmount());
+        assertEquals(
+                sentResult.timestamp().truncatedTo(ChronoUnit.SECONDS),
+                obtainedResult.timestamp().truncatedTo(ChronoUnit.SECONDS)
+        );
+    }
+
+    private static KafkaConsumer<String, String> getConsumer() {
+        Properties consumerProps = new Properties();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        return new KafkaConsumer<>(consumerProps);
     }
 
     @Test
@@ -369,7 +426,7 @@ class PaymentControllerTest {
 
     @Test
     @WithMockUser(username = "1", authorities = "ADMIN")
-    void getTotalByUserId_ShouldReturnForbiddenForWrongUser() throws Exception {
+    void getTotalByUserId_ShouldReturnOkForValidUser() throws Exception {
         // Arrange
         String weeksAgo = LocalDate.now().minusWeeks(2).toString();
 
@@ -382,7 +439,7 @@ class PaymentControllerTest {
     }
 
     @Test
-    void getTotalByUserId_ShouldReturnOkForValidUser() throws Exception {
+    void getTotalByUserId_ShouldReturnForbiddenForWrongUser() throws Exception {
         // Arrange
         String weeksAgo = LocalDate.now().minusWeeks(2).toString();
 
