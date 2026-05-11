@@ -1,0 +1,30 @@
+services:
+
+  mongo:
+    image: amd64/mongo:8.0-noble
+    ports:
+      - "27017:27017"
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-mongo}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-mongo}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-payment_service}
+
+    healthcheck:
+      test: >
+        mongosh --username $MONGO_USER 
+        --password $MONGO_PASSWORD
+        --eval "db.adminCommand('ping')" 
+        --quiet
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    image: khatkevichmatsvei/paymentservice
+    restart: on-failure
+    ports:
+      - "8083:8083"
+    depends_on:
+      mongo:
+        condition: service_healthy
